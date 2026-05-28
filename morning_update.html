@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Morning Update</title>
+  <style>
+    /* Simple styling for a friendly dashboard */
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f5f7fa;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 2em;
+      margin-bottom: 0.2em;
+    }
+    .section {
+      background-color: #ffffff;
+      margin-bottom: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .section h2 {
+      margin-top: 0;
+    }
+    ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    li {
+      padding: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Your Daily Dashboard</h1>
+    <div id="datetime" class="section"></div>
+
+    <div class="section weather">
+      <h2>Weather</h2>
+      <div id="weather">Loading weather…</div>
+    </div>
+
+    <div class="section quote">
+      <h2>Inspirational Quote</h2>
+      <div id="quote">Loading quote…</div>
+    </div>
+
+    <div class="section dbt">
+      <h2>DBT Skill Reminder</h2>
+      <div id="dbt">Loading DBT tip…</div>
+    </div>
+
+    <div class="section calendar">
+      <h2>Upcoming Events</h2>
+      <ul id="events">
+        <li>Loading events…</li>
+      </ul>
+    </div>
+
+    <div class="section tasks">
+      <h2>Task List</h2>
+      <ul id="tasks">
+        <li>Loading tasks…</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Display local date and time in a friendly format
+    function updateDateTime() {
+      const now = new Date();
+      const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      };
+      document.getElementById('datetime').textContent = now.toLocaleString('en-US', options);
+    }
+    updateDateTime();
+
+    // Fetch current weather for Chattanooga using OpenWeatherMap API
+    async function fetchWeather() {
+      const apiKey = 'YOUR_OPENWEATHERMAP_API_KEY';
+      // Coordinates for Chattanooga, Tennessee
+      const lat = '35.0456';
+      const lon = '-85.3097';
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=imperial&appid=${apiKey}`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.main) {
+          const temp = data.main.temp;
+          const description = data.weather[0].description;
+          const location = data.name;
+          document.getElementById('weather').textContent = `${location}: ${description}, ${temp.toFixed(0)}°F`;
+        } else {
+          document.getElementById('weather').textContent = 'Unable to load weather.';
+        }
+      } catch (e) {
+        document.getElementById('weather').textContent = 'Error loading weather.';
+      }
+    }
+    // Uncomment the next line after inserting your API key
+    // fetchWeather();
+
+    // Fetch the quote of the day using the ZenQuotes API
+    async function fetchQuote() {
+      try {
+        const res = await fetch('https://zenquotes.io/api/today');
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const quoteObj = data[0];
+          document.getElementById('quote').textContent = `"${quoteObj.q}" — ${quoteObj.a}`;
+        } else {
+          document.getElementById('quote').textContent = 'No quote available.';
+        }
+      } catch (e) {
+        document.getElementById('quote').textContent = 'Error loading quote.';
+      }
+    }
+    fetchQuote();
+
+    // Display a random DBT tip
+    const dbtTips = [
+      'Wise mind balances emotion and reason. Check if your decisions consider both feelings and facts.',
+      'Practice opposite action: if sadness urges you to withdraw, reach out to someone instead.',
+      'Ground yourself with mindful breathing for 60 seconds: notice your breath in and out.',
+      'Observe and describe your thoughts without judgment. Label them and let them pass like clouds.'
+    ];
+    function showDbtTip() {
+      const tip = dbtTips[Math.floor(Math.random() * dbtTips.length)];
+      document.getElementById('dbt').textContent = tip;
+    }
+    showDbtTip();
+
+    // Initialize Google Calendar API and list upcoming events
+    function initGoogleCalendar() {
+      const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+      const API_KEY = 'YOUR_GOOGLE_API_KEY';
+      const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'];
+      const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+
+      function handleClientLoad() {
+        gapi.load('client:auth2', initClient);
+      }
+      function initClient() {
+        gapi.client.init({
+          apiKey: API_KEY,
+          clientId: CLIENT_ID,
+          discoveryDocs: DISCOVERY_DOCS,
+          scope: SCOPES,
+        }).then(function () {
+          if (!gapi.auth2.getAuthInstance().isSignedIn.get()) {
+            // Prompt user to sign in
+            gapi.auth2.getAuthInstance().signIn();
+          }
+          listUpcomingEvents();
+        });
+      }
+      async function listUpcomingEvents() {
+        const now = new Date();
+        const oneWeekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const response = await gapi.client.calendar.events.list({
+          calendarId: 'primary',
+          timeMin: now.toISOString(),
+          timeMax: oneWeekLater.toISOString(),
+          showDeleted: false,
+          singleEvents: true,
+          orderBy: 'startTime',
+        });
+        const events = response.result.items || [];
+        const list = document.getElementById('events');
+        list.innerHTML = '';
+        if (events.length > 0) {
+          events.forEach((event) => {
+            const when = event.start.dateTime || event.start.date;
+            const li = document.createElement('li');
+            li.textContent = `${event.summary} — ${when}`;
+            list.appendChild(li);
+          });
+        } else {
+          list.innerHTML = '<li>No upcoming events found.</li>';
+        }
+      }
+      handleClientLoad();
+    }
+    // Uncomment the next line after inserting your Google client and API keys
+    // initGoogleCalendar();
+
+    // Load tasks from a local JSON file
+    async function loadTasks() {
+      try {
+        const res = await fetch('tasks.json');
+        const tasks = await res.json();
+        const list = document.getElementById('tasks');
+        list.innerHTML = '';
+        tasks.forEach((task) => {
+          const li = document.createElement('li');
+          li.textContent = task;
+          list.appendChild(li);
+        });
+      } catch (e) {
+        document.getElementById('tasks').innerHTML = '<li>No tasks found.</li>';
+      }
+    }
+    loadTasks();
+  </script>
+  <!-- Load the Google API library. Only needed if using Google Calendar integration -->
+  <script src="https://apis.google.com/js/api.js"></script>
+</body>
+</html>
