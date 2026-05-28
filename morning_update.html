@@ -2,45 +2,180 @@
 <html>
 <head>
   <title>Morning Update</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+      color: #222;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      color: #2c3e50;
+    }
+
+    h2 {
+      margin-top: 30px;
+      color: #34495e;
+    }
+
+    input {
+      padding: 10px;
+      width: 70%;
+      max-width: 400px;
+    }
+
+    button {
+      padding: 10px 14px;
+      margin-left: 5px;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background: #2c7be5;
+      color: white;
+    }
+
+    ul {
+      padding-left: 0;
+      list-style: none;
+    }
+
+    li {
+      background: #f1f3f5;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .done {
+      text-decoration: line-through;
+      color: gray;
+    }
+
+    .delete {
+      background: #dc3545;
+    }
+  </style>
 </head>
+
 <body>
-  <h1>Your Daily Dashboard</h1>
+  <div class="container">
+    <h1>Your Daily Dashboard</h1>
 
-  <h2>Weather</h2>
-  <p>Check your local weather manually for now.</p>
+    <h2>Weather</h2>
+    <p>Check your local weather manually for now.</p>
 
-  <h2>Inspirational Quote</h2>
-  <p>Keep going. Small steps still count.</p>
+    <h2>Inspirational Quote</h2>
+    <p>Keep going. Small steps still count.</p>
 
-  <h2>DBT Skill Reminder</h2>
-  <p>Pause, breathe, observe, then choose your next action.</p>
+    <h2>DBT Skill Reminder</h2>
+    <p>Pause, breathe, observe, then choose your next action.</p>
 
-  <h2>Upcoming Events</h2>
-  <ul>
-    <li>No events added yet.</li>
-  </ul>
+    <h2>Upcoming Events</h2>
+    <ul>
+      <li>No events added yet.</li>
+    </ul>
 
-  <h2>Task List</h2>
-  <ul id="tasks">
-    <li>Loading tasks…</li>
-  </ul>
+    <h2>Task List</h2>
+
+    <input id="newTask" placeholder="New task..." />
+    <button onclick="addTask()">Add</button>
+
+    <ul id="tasks">
+      <li>Loading tasks…</li>
+    </ul>
+  </div>
 
   <script>
-    fetch("tasks.json")
-      .then(response => response.json())
-      .then(tasks => {
-        const list = document.getElementById("tasks");
-        list.innerHTML = "";
-        tasks.forEach(task => {
-          const li = document.createElement("li");
-          li.textContent = task;
-          list.appendChild(li);
-        });
-      })
-      .catch(error => {
-        document.getElementById("tasks").innerHTML =
-          "<li>Could not load tasks.json</li>";
+    let taskData = [];
+
+    function saveTasks() {
+      localStorage.setItem("morningTasks", JSON.stringify(taskData));
+    }
+
+    function renderTasks() {
+      const list = document.getElementById("tasks");
+      list.innerHTML = "";
+
+      if (taskData.length === 0) {
+        list.innerHTML = "<li>No tasks yet.</li>";
+        return;
+      }
+
+      taskData.forEach((task, index) => {
+        const li = document.createElement("li");
+
+        const span = document.createElement("span");
+        span.textContent = task.text;
+        if (task.done) span.classList.add("done");
+
+        span.onclick = () => {
+          taskData[index].done = !taskData[index].done;
+          saveTasks();
+          renderTasks();
+        };
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.className = "delete";
+        deleteBtn.onclick = () => {
+          taskData.splice(index, 1);
+          saveTasks();
+          renderTasks();
+        };
+
+        li.appendChild(span);
+        li.appendChild(deleteBtn);
+        list.appendChild(li);
       });
+    }
+
+    function addTask() {
+      const input = document.getElementById("newTask");
+      const text = input.value.trim();
+
+      if (text === "") return;
+
+      taskData.push({ text: text, done: false });
+      input.value = "";
+      saveTasks();
+      renderTasks();
+    }
+
+    const savedTasks = localStorage.getItem("morningTasks");
+
+    if (savedTasks) {
+      taskData = JSON.parse(savedTasks);
+      renderTasks();
+    } else {
+      fetch("tasks.json")
+        .then(response => response.json())
+        .then(tasks => {
+          taskData = tasks.map(task => ({
+            text: task,
+            done: false
+          }));
+          saveTasks();
+          renderTasks();
+        })
+        .catch(() => {
+          taskData = [];
+          renderTasks();
+        });
+    }
   </script>
 </body>
 </html>
